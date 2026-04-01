@@ -1,6 +1,16 @@
+[English](./README.md) | [中文](./README-zh.md)
+
 # Learn the Actual Claude Code
 
 A 14-session course teaching Claude Code's harness engineering from the **actual TypeScript source code** — annotated deep-dives into the real implementation, paired with simplified Python reimplementations you can run and modify.
+
+Documentation available in [English](./docs/en/) | [中文](./docs/zh/).
+
+## Inspiration
+
+This course is inspired by [shareAI-lab/learn-claude-code](https://github.com/shareAI-lab/learn-claude-code), an excellent progressive curriculum that teaches agent harness engineering through hands-on Python sessions. We follow the same session-based pedagogical approach they pioneered.
+
+Where this course goes further: since the [Claude Code source](https://github.com/AprilNEA/claude-code-source) has been publicly recovered, we can ground every architectural claim in specific file paths and line numbers from the real TypeScript implementation. This means our reimplementations reflect the actual design patterns — streaming generators, concurrent/serial tool partitioning, prompt cache sharing, and more — rather than inferences from external behavior.
 
 ## What You'll Learn
 
@@ -125,7 +135,8 @@ python agents/s_full.py
 ```
 learn-the-actual-claude-code/
   agents/            Python reimplementations (one per session + combined)
-  docs/en/           Progressive learning guides
+  docs/en/           Progressive learning guides (English)
+  docs/zh/           Progressive learning guides (中文)
   source-analysis/   Annotated TypeScript source walkthroughs
   skills/            Example skill definitions
   architecture/      System architecture reference
