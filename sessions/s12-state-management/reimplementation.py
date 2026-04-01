@@ -14,12 +14,11 @@ Run:  python sessions/s12-state-management/reimplementation.py
 """
 from __future__ import annotations
 
-import copy
 import dataclasses
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Generic, Optional, TypeVar
+from typing import Any, Callable, Generic, TypeVar
 
 T = TypeVar("T")
 
