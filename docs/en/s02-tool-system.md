@@ -1,65 +1,39 @@
-# Session 02 -- Tool Interface & Registration
+# s02: Tool System
 
-`s01 > [ s02 ] s03 > s04 > s05 | s06 > s07 > s08 > s09 > s10 | s11 > s12 > s13 > s14`
+`s01 > [ s02 ] s03 > s04 > s05`
 
-> "Every tool follows a rich interface with typed input/output, feature gates for conditional registration, and ToolUseContext carrying 40+ fields."
->
-> *Harness layer: `agents/s02_tool_system.py` reimplements the Tool ABC, ToolRegistry, and 4 concrete tools in ~700 lines of Python. Run it to see registration, gating, validation, and execution in action.*
-
----
+> *"One ABC, thirty fields, fail-closed defaults"* -- every tool is a rich interface, not a name + JSON schema.
 
 ## Problem
 
-A naive agent just passes tool names and JSON schemas to the API and calls a function when the model asks. That falls apart fast:
-
-- **No validation before execution** -- a malformed `file_path` hits the filesystem and you get a cryptic Python traceback instead of a structured error.
-- **No behavioral metadata** -- the orchestrator has no idea which tools can run concurrently and which must run alone.
-- **No conditional registration** -- experimental tools ship in the binary but should only activate behind feature flags.
-- **No context** -- the tool function receives raw JSON but has no idea about the current working directory, file caches, abort signals, or permission state.
-
-Claude Code solves all of these with a **30+ field Tool interface** in `src/Tool.ts` (792 LOC) and a **three-stage assembly pipeline** in `src/tools.ts` (389 LOC).
-
----
+In s01 the agent had one hardcoded bash tool. A real agent needs dozens of tools, each with validation, behavioral metadata (can it run in parallel?), and conditional registration behind feature flags. A naive dict of `{name: function}` cannot express any of this.
 
 ## Solution
 
 ```
-  Tool interface (30+ fields)
-  +-----------------------------------------+
-  |  name, aliases, searchHint              |  identity
-  |  description, inputSchema              |  API schema
-  |  isReadOnly(input), isConcurrencySafe  |  behavioral flags
-  |  isEnabled(), isDestructive            |  lifecycle
-  |  validateInput(input, ctx)              |  pre-check
-  |  checkPermissions(input, ctx)           |  authorization
-  |  call(input, ctx)                       |  execution
-  |  prompt(), userFacingName()            |  display
-  |  maxResultSizeChars                     |  output limits
-  +-----------------------------------------+
-
+  Tool ABC (30+ fields)
+  +-----------------------------------------------+
+  |  name, description, input_schema              |  identity
+  |  is_read_only(input), is_concurrency_safe     |  behavioral flags
+  |  validate_input(input, ctx)                   |  pre-check
+  |  check_permissions(input, ctx)                |  authorization
+  |  call(input, ctx)                             |  execution
+  +-----------------------------------------------+
+                     |
+                     v
   ToolRegistry
-  +-----------------------------------------+
-  |  getAllBaseTools()    -- master list     |
-  |  getTools()          -- filter enabled  |
-  |  assembleToolPool()  -- merge MCP tools |
-  |  feature gates       -- dead-code elim  |
-  +-----------------------------------------+
-
-  ToolUseContext (40+ fields)
-  +-----------------------------------------+
-  |  cwd, abortSignal, readFileTimestamps   |
-  |  options (permission mode, model, etc.) |
-  |  setToolJSX, onUpdate callbacks         |
-  +-----------------------------------------+
+  +-----------------------------------------------+
+  |  register(tool, requires_feature=...)         |  feature-gated
+  |  get_tools()  -> enabled only                 |  runtime filter
+  |  assemble_tool_pool(mcp_tools)                |  merge + dedup
+  +-----------------------------------------------+
 ```
 
----
+Every tool inherits from one ABC. `buildTool()` provides fail-closed defaults so authors only override what they need. Real code: `src/Tool.ts` (792 LOC), `src/tools.ts` (389 LOC).
 
 ## How It Works
 
-### 1. The Tool abstract base class
-
-Every tool inherits from this. `buildTool()` in the real source provides **fail-closed defaults** so tool authors only override what they need:
+**1. Define the Tool ABC with fail-closed defaults.**
 
 ```python
 class Tool(ABC):
@@ -69,186 +43,92 @@ class Tool(ABC):
 
     @property
     @abstractmethod
-    def description(self) -> str: ...
-
-    @property
-    @abstractmethod
     def input_schema(self) -> dict: ...
 
-    # -- Behavioral flags (fail-closed defaults) --
-
     def is_read_only(self, input_data: dict) -> bool:
-        return False  # assume writes
+        return False   # assume writes
 
     def is_concurrency_safe(self, input_data: dict) -> bool:
-        return False  # assume NOT safe
+        return False   # assume NOT safe
 
-    def is_destructive(self, input_data: dict) -> bool:
-        return False
-
-    # -- Validation & Permissions --
-
-    def validate_input(self, input_data, context) -> ValidationResult:
+    def validate_input(self, input_data, ctx) -> ValidationResult:
         return ValidationResult(ok=True)
 
-    def check_permissions(self, input_data, context) -> PermissionResult:
-        return PermissionResult(behavior=PermissionBehavior.ALLOW)
-
-    # -- Execution --
-
     @abstractmethod
-    def call(self, input_data: dict, context: ToolUseContext) -> ToolResult: ...
+    def call(self, input_data: dict, ctx: ToolUseContext) -> ToolResult: ...
 ```
 
-The key insight: **behavioral flags are input-dependent**. `BashTool.is_read_only()` inspects the actual command to decide:
+Defaults are conservative: a tool is assumed to write and to be unsafe for parallel execution unless it says otherwise.
+
+**2. Behavioral flags are input-dependent.**
+
+The same tool can be read-only or read-write depending on the command:
 
 ```python
 class BashTool(Tool):
     def is_read_only(self, input_data: dict) -> bool:
-        """Real source checks command against read-only constraints."""
-        cmd = input_data.get("command", "").strip().split()[0]
-        read_commands = {"ls", "cat", "head", "tail", "grep",
-                         "find", "wc", "echo", "pwd", "which"}
-        return cmd in read_commands
+        cmd = input_data.get("command", "").split()[0]
+        return cmd in {"ls", "cat", "grep", "find", "pwd"}
 
     def is_concurrency_safe(self, input_data: dict) -> bool:
-        """Real source: isConcurrencySafe returns isReadOnly result."""
         return self.is_read_only(input_data)
 ```
 
-### 2. ToolRegistry with feature gates
+`ls` is safe to run in parallel. `rm` is not. Same tool, different input.
 
-The real source uses Bun's `feature()` for dead-code elimination at build time. Our reimplementation captures the same pattern:
-
-```python
-class ToolRegistry:
-    def __init__(self):
-        self._tools: list[Tool] = []
-        self._feature_flags: dict[str, bool] = {}
-
-    def register(self, tool: Tool, *, requires_feature: str | None = None):
-        """
-        Real source patterns:
-          - Direct: [BashTool, FileReadTool, ...]
-          - Feature-gated: ...(feature('KAIROS') ? [SleepTool] : [])
-          - Env-gated: ...(process.env.USER_TYPE === 'ant' ? [ConfigTool] : [])
-        """
-        if requires_feature and not self.feature(requires_feature):
-            return
-        self._tools.append(tool)
-
-    def get_tools(self) -> list[Tool]:
-        """Filter by isEnabled() -- mirrors getTools() in tools.ts."""
-        return [t for t in self._tools if t.is_enabled()]
-
-    def assemble_tool_pool(self, mcp_tools=None) -> list[Tool]:
-        """Merge built-in + MCP tools, deduplicate by name.
-        Real source sorts for prompt-cache stability."""
-        enabled = self.get_tools()
-        if not mcp_tools:
-            return enabled
-        seen = {t.name for t in enabled}
-        merged = list(enabled)
-        for mcp_tool in mcp_tools:
-            if mcp_tool.name not in seen:
-                merged.append(mcp_tool)
-                seen.add(mcp_tool.name)
-        return merged
-```
-
-### 3. The execution pipeline
-
-Before any tool runs, it passes through a three-step pipeline:
+**3. Register tools with feature gates.**
 
 ```python
-def execute_tool(tool, input_data, context) -> ToolResult:
-    """
-    Real source pipeline (in toolOrchestration.ts):
-      1. validateInput()  -- structured pre-check
-      2. checkPermissions() -- tool-specific + general permission system
-      3. call()           -- actual execution
-    """
-    # Step 1: Validate input
-    validation = tool.validate_input(input_data, context)
-    if not validation.ok:
-        return ToolResult(
-            data=f"Validation error (code {validation.error_code}): {validation.message}",
-            is_error=True,
-        )
+registry = ToolRegistry()
+registry.register(BashTool())
+registry.register(FileReadTool())
+registry.register(SleepTool(), requires_feature="KAIROS")  # gated
 
-    # Step 2: Check permissions
-    perm = tool.check_permissions(input_data, context)
-    if perm.behavior == PermissionBehavior.DENY:
-        return ToolResult(data=f"Permission denied: {perm.reason}", is_error=True)
-
-    # Step 3: Execute
-    return tool.call(input_data, context)
+enabled = registry.get_tools()          # filters by is_enabled()
+pool = registry.assemble_tool_pool(mcp) # merge MCP tools, dedup by name
 ```
 
-### 4. Concrete tool example: FileReadTool
+Real code uses Bun's `feature()` for dead-code elimination at build time. Feature-gated tools never ship to users who do not have the flag.
+
+**4. Execute through a three-step pipeline.**
 
 ```python
-class FileReadTool(Tool):
-    @property
-    def name(self) -> str:
-        return "Read"
+def execute_tool(tool, input_data, ctx) -> ToolResult:
+    # Step 1: validate input (structured pre-check)
+    v = tool.validate_input(input_data, ctx)
+    if not v.ok:
+        return ToolResult(data=v.message, is_error=True)
 
-    @property
-    def max_result_size_chars(self) -> int:
-        return float("inf")  # avoid circular reads
+    # Step 2: check permissions (tool-specific + general)
+    p = tool.check_permissions(input_data, ctx)
+    if p.behavior == "deny":
+        return ToolResult(data=p.reason, is_error=True)
 
-    def is_read_only(self, input_data) -> bool:
-        return True
-
-    def is_concurrency_safe(self, input_data) -> bool:
-        return True
-
-    def validate_input(self, input_data, context) -> ValidationResult:
-        file_path = input_data.get("file_path", "")
-        if not file_path:
-            return ValidationResult(ok=False, message="file_path is required", error_code=1)
-        blocked = {"/dev/zero", "/dev/random", "/dev/urandom"}
-        if file_path in blocked:
-            return ValidationResult(
-                ok=False,
-                message=f"Cannot read '{file_path}': device file would block",
-                error_code=9,
-            )
-        return ValidationResult(ok=True)
+    # Step 3: execute
+    return tool.call(input_data, ctx)
 ```
 
----
+Validation catches malformed input before it ever touches the filesystem. Permissions run after validation so they see clean data. Real pipeline lives in `src/services/tools/toolOrchestration.ts`.
 
 ## What Changed
 
-| Component | Before (tutorial style) | After (Claude Code) |
+| Component | Before (s01) | After (s02) |
 |---|---|---|
-| Tool definition | Dict with name + schema | 30+ field interface with behavioral flags |
-| Concurrency info | None | `isReadOnly(input)`, `isConcurrencySafe(input)` per-call |
-| Registration | Hardcoded list | Feature-gated registry with `assembleToolPool()` |
-| Validation | Try/except in call body | Structured `validateInput()` before permissions |
-| Context | Bare `cwd` string | `ToolUseContext` with 40+ fields (cwd, abort, cache, options) |
-| MCP tools | N/A | Merged and deduplicated, built-ins take precedence |
-| Output limits | None | `maxResultSizeChars` with disk persistence fallback |
-
----
+| Tool definition | Bare dict with name + schema | 30+ field ABC with behavioral flags |
+| Concurrency info | None | `is_read_only(input)`, `is_concurrency_safe(input)` per-call |
+| Registration | Hardcoded list | Feature-gated registry with `assemble_tool_pool()` |
+| Validation | Try/except inside call | Structured `validate_input()` before permissions |
+| Execution | Direct function call | Three-step pipeline: validate, permissions, call |
 
 ## Try It
 
 ```bash
-cd agents
-python s02_tool_system.py
+cd learn-the-actual-claude-code
+python agents/s02_tool_system.py
 ```
 
-The demo will:
-1. Build a registry with 4 tools and feature gates
-2. Show input-dependent behavioral flags (same `BashTool`, different commands)
-3. Run the validation pipeline (blocked device paths, same-string edits)
-4. Demonstrate MCP tool merging with deduplication
-5. Execute a live bash command through the full pipeline
+Example things to watch for:
 
-**Source files to explore next:**
-- `src/Tool.ts` -- the full 30+ field Tool interface (792 LOC)
-- `src/tools.ts` -- `getAllBaseTools()`, `getTools()`, `assembleToolPool()` (389 LOC)
-- `src/tools/BashTool/BashTool.tsx` -- real bash tool (~900 LOC)
-- `src/tools/FileReadTool/FileReadTool.ts` -- real read tool (1,184 LOC)
+- `BashTool.is_read_only("ls -la")` returns `True`, but `is_read_only("git push")` returns `False`
+- `FileReadTool` blocks `/dev/zero` at the validation step, before execution
+- MCP tool `Bash` is deduplicated because the built-in takes precedence
