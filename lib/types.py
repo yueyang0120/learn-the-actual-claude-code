@@ -31,22 +31,22 @@ class ContentBlock:
 
 @dataclass
 class TextBlock(ContentBlock):
-    text: str
+    text: str = ""
     type: str = "text"
 
 
 @dataclass
 class ToolUseBlock(ContentBlock):
-    id: str
-    name: str
-    input: dict[str, Any]
+    id: str = ""
+    name: str = ""
+    input: dict[str, Any] = field(default_factory=dict)
     type: str = "tool_use"
 
 
 @dataclass
 class ToolResultBlock(ContentBlock):
-    tool_use_id: str
-    content: str
+    tool_use_id: str = ""
+    content: str = ""
     is_error: bool = False
     type: str = "tool_result"
 

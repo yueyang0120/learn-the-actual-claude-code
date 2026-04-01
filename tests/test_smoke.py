@@ -1,7 +1,7 @@
 """
-Smoke tests for all session reimplementations.
+Smoke tests for all agent reimplementations.
 
-Verifies that every session's reimplementation.py is syntactically valid Python
+Verifies that every agent file is syntactically valid Python
 and can be imported without errors (excluding API calls).
 """
 
@@ -11,36 +11,38 @@ from pathlib import Path
 
 import pytest
 
-SESSIONS_DIR = Path(__file__).resolve().parents[1] / "sessions"
+AGENTS_DIR = Path(__file__).resolve().parents[1] / "agents"
+DOCS_DIR = Path(__file__).resolve().parents[1] / "docs" / "en"
+SOURCE_ANALYSIS_DIR = Path(__file__).resolve().parents[1] / "source-analysis"
 
 
-def get_session_files():
-    """Find all reimplementation.py files across sessions."""
-    files = sorted(SESSIONS_DIR.glob("s*/reimplementation.py"))
-    return [(f.parent.name, f) for f in files]
+def get_agent_files():
+    """Find all Python files in agents/."""
+    files = sorted(AGENTS_DIR.glob("s*.py"))
+    return [(f.stem, f) for f in files]
 
 
 @pytest.mark.parametrize(
-    "session_name,filepath",
-    get_session_files(),
-    ids=[name for name, _ in get_session_files()],
+    "agent_name,filepath",
+    get_agent_files(),
+    ids=[name for name, _ in get_agent_files()],
 )
-def test_session_compiles(session_name, filepath):
-    """Verify that each session's reimplementation.py is valid Python."""
+def test_agent_compiles(agent_name, filepath):
+    """Verify that each agent file is valid Python."""
     source = filepath.read_text()
     try:
         ast.parse(source, filename=str(filepath))
     except SyntaxError as e:
-        pytest.fail(f"{session_name}/reimplementation.py has syntax error: {e}")
+        pytest.fail(f"agents/{agent_name}.py has syntax error: {e}")
 
 
 @pytest.mark.parametrize(
-    "session_name,filepath",
-    get_session_files(),
-    ids=[name for name, _ in get_session_files()],
+    "agent_name,filepath",
+    get_agent_files(),
+    ids=[name for name, _ in get_agent_files()],
 )
-def test_session_has_main(session_name, filepath):
-    """Verify that each session's reimplementation.py has a runnable entry point."""
+def test_agent_has_main(agent_name, filepath):
+    """Verify that each agent file has a runnable entry point."""
     source = filepath.read_text()
     tree = ast.parse(source)
 
@@ -61,27 +63,25 @@ def test_session_has_main(session_name, filepath):
     )
 
     assert has_main_guard or has_main_func, (
-        f"{session_name}/reimplementation.py should have "
+        f"agents/{agent_name}.py should have "
         f"an if __name__ == '__main__' guard or a main() function"
     )
 
 
-def test_all_sessions_have_readme():
-    """Verify that every session directory has a README.md."""
-    session_dirs = sorted(
-        d for d in SESSIONS_DIR.iterdir() if d.is_dir() and d.name.startswith("s")
-    )
-    for d in session_dirs:
-        assert (d / "README.md").exists(), f"{d.name} is missing README.md"
+def test_all_sessions_have_docs():
+    """Verify that every session has a learning doc."""
+    for i in range(1, 15):
+        prefix = f"s{i:02d}-"
+        matches = list(DOCS_DIR.glob(f"{prefix}*.md"))
+        assert len(matches) > 0, f"docs/en/ is missing doc for session {i:02d}"
 
 
 def test_all_sessions_have_source_analysis():
-    """Verify that every session directory has a SOURCE_ANALYSIS.md."""
-    session_dirs = sorted(
-        d for d in SESSIONS_DIR.iterdir() if d.is_dir() and d.name.startswith("s")
-    )
-    for d in session_dirs:
-        assert (d / "SOURCE_ANALYSIS.md").exists(), f"{d.name} is missing SOURCE_ANALYSIS.md"
+    """Verify that every session has a source analysis file."""
+    for i in range(1, 15):
+        prefix = f"{i:02d}-"
+        matches = list(SOURCE_ANALYSIS_DIR.glob(f"{prefix}*.md"))
+        assert len(matches) > 0, f"source-analysis/ is missing file for session {i:02d}"
 
 
 def test_lib_imports():
