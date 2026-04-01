@@ -12,7 +12,8 @@ from pathlib import Path
 import pytest
 
 AGENTS_DIR = Path(__file__).resolve().parents[1] / "agents"
-DOCS_DIR = Path(__file__).resolve().parents[1] / "docs" / "en"
+DOCS_EN_DIR = Path(__file__).resolve().parents[1] / "docs" / "en"
+DOCS_ZH_DIR = Path(__file__).resolve().parents[1] / "docs" / "zh"
 SOURCE_ANALYSIS_DIR = Path(__file__).resolve().parents[1] / "source-analysis"
 
 
@@ -69,11 +70,19 @@ def test_agent_has_main(agent_name, filepath):
 
 
 def test_all_sessions_have_docs():
-    """Verify that every session has a learning doc."""
+    """Verify that every session has a learning doc in English."""
     for i in range(1, 15):
         prefix = f"s{i:02d}-"
-        matches = list(DOCS_DIR.glob(f"{prefix}*.md"))
+        matches = list(DOCS_EN_DIR.glob(f"{prefix}*.md"))
         assert len(matches) > 0, f"docs/en/ is missing doc for session {i:02d}"
+
+
+def test_all_sessions_have_zh_docs():
+    """Verify that every session has a learning doc in Chinese."""
+    for i in range(1, 15):
+        prefix = f"s{i:02d}-"
+        matches = list(DOCS_ZH_DIR.glob(f"{prefix}*.md"))
+        assert len(matches) > 0, f"docs/zh/ is missing doc for session {i:02d}"
 
 
 def test_all_sessions_have_source_analysis():
