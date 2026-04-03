@@ -14,7 +14,6 @@ import pytest
 AGENTS_DIR = Path(__file__).resolve().parents[1] / "agents"
 DOCS_EN_DIR = Path(__file__).resolve().parents[1] / "docs" / "en"
 DOCS_ZH_DIR = Path(__file__).resolve().parents[1] / "docs" / "zh"
-SOURCE_ANALYSIS_DIR = Path(__file__).resolve().parents[1] / "source-analysis"
 
 
 def get_agent_files():
@@ -69,28 +68,20 @@ def test_agent_has_main(agent_name, filepath):
     )
 
 
-def test_all_sessions_have_docs():
-    """Verify that every session has a learning doc in English."""
-    for i in range(1, 15):
-        prefix = f"s{i:02d}-"
-        matches = list(DOCS_EN_DIR.glob(f"{prefix}*.md"))
-        assert len(matches) > 0, f"docs/en/ is missing doc for session {i:02d}"
-
-
-def test_all_sessions_have_zh_docs():
-    """Verify that every session has a learning doc in Chinese."""
-    for i in range(1, 15):
-        prefix = f"s{i:02d}-"
-        matches = list(DOCS_ZH_DIR.glob(f"{prefix}*.md"))
-        assert len(matches) > 0, f"docs/zh/ is missing doc for session {i:02d}"
-
-
-def test_all_sessions_have_source_analysis():
-    """Verify that every session has a source analysis file."""
+def test_all_chapters_have_docs():
+    """Verify that every chapter has a doc in English."""
     for i in range(1, 15):
         prefix = f"{i:02d}-"
-        matches = list(SOURCE_ANALYSIS_DIR.glob(f"{prefix}*.md"))
-        assert len(matches) > 0, f"source-analysis/ is missing file for session {i:02d}"
+        matches = list(DOCS_EN_DIR.glob(f"{prefix}*.md"))
+        assert len(matches) > 0, f"docs/en/ is missing doc for chapter {i:02d}"
+
+
+def test_all_chapters_have_zh_docs():
+    """Verify that every chapter has a doc in Chinese."""
+    for i in range(1, 15):
+        prefix = f"{i:02d}-"
+        matches = list(DOCS_ZH_DIR.glob(f"{prefix}*.md"))
+        assert len(matches) > 0, f"docs/zh/ is missing doc for chapter {i:02d}"
 
 
 def test_lib_imports():
