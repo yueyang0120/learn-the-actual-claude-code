@@ -6,6 +6,16 @@ How does a production AI coding agent actually work? This repository answers tha
 
 Fourteen chapters. Each one takes a subsystem — the agent loop, the tool dispatcher, the permission engine — explains the engineering problem it solves, walks through the actual implementation with file paths and line references, and provides a runnable Python version.
 
+## At a Glance
+
+| Area | Implementation signal |
+| --- | --- |
+| System focus | Production AI coding-agent architecture rather than surface-level prompt examples. |
+| Source discipline | Notes are grounded in real source paths and line-level implementation references. |
+| Runnable artifacts | Each subsystem has a Python reconstruction, plus a combined agent. |
+| Agent runtime depth | Covers tool orchestration, permissions, compaction, skills, MCP, state, hooks, subagents, and worktrees. |
+| FDE relevance | Demonstrates the ability to reverse-engineer a complex developer platform and explain it to technical stakeholders. |
+
 ## Quick Start
 
 ```bash
@@ -102,6 +112,16 @@ skills/            Example skill definitions
 lib/               Shared Python library (types, utilities)
 tests/             Smoke tests
 ```
+
+## Review Guide
+
+If you are scanning this repository, the strongest areas are:
+
+- `docs/en/01-the-agent-loop.md` and `agents/s01_agent_loop.py`: event-driven agent loop.
+- `docs/en/03-tool-orchestration.md` and `agents/s03_tool_orchestration.py`: concurrent vs. serial tool execution.
+- `docs/en/05-permissions.md` and `agents/s05_permissions.py`: permission model and command classification.
+- `docs/en/06-context-compaction.md` and `agents/s06_context_compaction.py`: context lifecycle management.
+- `architecture/ARCHITECTURE.md`: end-to-end system map.
 
 ## Prerequisites
 
