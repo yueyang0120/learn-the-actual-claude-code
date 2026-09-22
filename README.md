@@ -1,6 +1,21 @@
 [English](./README.md) | [中文](./README-zh.md)
 
-# Learn the Actual Claude Code
+<p align="center">
+  <img src="assets/readme-banner.svg" alt="AI Coding Agent Architecture" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/yueyang0120/learn-the-actual-claude-code/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yueyang0120/learn-the-actual-claude-code/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white">
+  <img alt="chapters" src="https://img.shields.io/badge/chapters-14-f59e0b">
+  <img alt="docs" src="https://img.shields.io/badge/docs-bilingual-0ea5e9">
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quickstart</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#review-guide">Review guide</a>
+</p>
 
 How does a production AI coding agent actually work? This repository answers that question by tracing Claude Code's architecture through its real TypeScript source code, then rebuilding each subsystem in Python.
 
@@ -60,6 +75,11 @@ python agents/s_full.py               # run the combined agent
 | 14 | [Worktree Isolation](docs/en/14-worktrees.md) | Git worktree creation with slug validation, settings propagation, change detection, and safe cleanup |
 
 ## Architecture
+
+<p align="center">
+  <img src="assets/architecture.svg" alt="AI Coding Agent Architecture architecture" width="100%">
+</p>
+
 
 ```
 +-----------------------------------------------+

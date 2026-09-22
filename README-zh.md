@@ -1,6 +1,21 @@
 [English](./README.md) | [中文](./README-zh.md)
 
-# 学习真正的 Claude Code
+<p align="center">
+  <img src="assets/readme-banner.svg" alt="AI Coding Agent Architecture" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/yueyang0120/learn-the-actual-claude-code/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yueyang0120/learn-the-actual-claude-code/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white">
+  <img alt="chapters" src="https://img.shields.io/badge/chapters-14-f59e0b">
+  <img alt="docs" src="https://img.shields.io/badge/docs-bilingual-0ea5e9">
+</p>
+
+<p align="center">
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#架构概览">架构概览</a> ·
+  <a href="#目录">章节目录</a>
+</p>
 
 一个生产级 AI 编程 Agent 到底是怎么工作的? 这个仓库通过追踪 Claude Code 的真实 TypeScript 源码来回答这个问题, 然后用 Python 重建每个子系统。
 
@@ -50,6 +65,10 @@ python agents/s_full.py               # 运行合并版 Agent
 | 14 | [工作树隔离](docs/zh/14-worktrees.md) | Git worktree 创建与 slug 校验, 设置传播, 变更检测, 安全清理 |
 
 ## 架构概览
+
+<p align="center">
+  <img src="assets/architecture.svg" alt="AI 编程 Agent 系统架构" width="100%">
+</p>
 
 ```
 +-----------------------------------------------+
