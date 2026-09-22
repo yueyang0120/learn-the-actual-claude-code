@@ -1,5 +1,7 @@
 [English](./README.md) | [中文](./README-zh.md)
 
+# AI Coding Agent Architecture
+
 <p align="center">
   <img src="assets/readme-banner.svg" alt="AI Coding Agent Architecture" width="100%">
 </p>
@@ -29,7 +31,6 @@ Fourteen chapters. Each one takes a subsystem — the agent loop, the tool dispa
 | Source discipline | Notes are grounded in real source paths and line-level implementation references. |
 | Runnable artifacts | Each subsystem has a Python reconstruction, plus a combined agent. |
 | Agent runtime depth | Covers tool orchestration, permissions, compaction, skills, MCP, state, hooks, subagents, and worktrees. |
-| FDE relevance | Demonstrates the ability to reverse-engineer a complex developer platform and explain it to technical stakeholders. |
 
 ## Quick Start
 
@@ -76,10 +77,27 @@ python agents/s_full.py               # run the combined agent
 
 ## Architecture
 
-<p align="center">
-  <img src="assets/architecture.svg" alt="AI Coding Agent Architecture architecture" width="100%">
-</p>
+```mermaid
+flowchart TD
+  CLI["CLI input · agents/s_full.py"] --> C{"Context threshold reached?"}
+  C -->|yes| M["micro_compact"]
+  C -->|no| L["Anthropic messages.create"]
+  M --> L
+  L --> T{"Tool-use response?"}
+  T -->|no| O["Print answer · return messages"]
+  T -->|yes| R["ToolRegistry + run_tools"]
+  R --> P["Permission checks"]
+  P --> E["Bash / file read / file write"]
+  E --> H["Append tool results"]
+  H --> C
+  classDef core fill:#fef3c7,stroke:#d97706,color:#78350f;
+  classDef io fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e;
+  class C,T,P core;
+  class CLI,L,O io;
+```
 
+
+### Referenced source architecture
 
 ```
 +-----------------------------------------------+
@@ -152,3 +170,11 @@ If you are scanning this repository, the strongest areas are:
 ## License
 
 MIT — see [SOURCES.md](SOURCES.md) for source attribution and credits.
+
+## Scope and reuse
+
+The diagram above describes the runnable combined Python example, `agents/s_full.py`. The source-study map below describes the referenced Claude Code version; the two are not equivalent implementations.
+
+Run individual chapter scripts to study one subsystem, or extend the combined example's `Tool` interface and `ToolRegistry` to add a tool. Its current loop calls `messages.create` and handles the complete response; it is not a streaming implementation. Other chapters demonstrate additional subsystems separately.
+
+This is an independent educational reconstruction, not an official Anthropic project or a drop-in Claude Code implementation. See [SOURCES.md](SOURCES.md) for the version, provenance, and attribution. The presence of that document is not an independent verification of every source claim.

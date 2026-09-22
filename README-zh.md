@@ -66,9 +66,28 @@ python agents/s_full.py               # 运行合并版 Agent
 
 ## 架构概览
 
-<p align="center">
-  <img src="assets/architecture.svg" alt="AI 编程 Agent 系统架构" width="100%">
-</p>
+下图对应可运行的 Python 示例 `agents/s_full.py`；它是独立的教学实现，不等同于 Claude Code。当前循环使用完整响应调用，不是流式实现。
+
+```mermaid
+flowchart TD
+  CLI["CLI input · agents/s_full.py"] --> C{"Context threshold reached?"}
+  C -->|yes| M["micro_compact"]
+  C -->|no| L["Anthropic messages.create"]
+  M --> L
+  L --> T{"Tool-use response?"}
+  T -->|no| O["Print answer · return messages"]
+  T -->|yes| R["ToolRegistry + run_tools"]
+  R --> P["Permission checks"]
+  P --> E["Bash / file read / file write"]
+  E --> H["Append tool results"]
+  H --> C
+  classDef core fill:#fef3c7,stroke:#d97706,color:#78350f;
+  classDef io fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e;
+  class C,T,P core;
+  class CLI,L,O io;
+```
+
+下面的源码结构图对应研究材料中引用的版本。来源和署名见 [SOURCES.md](SOURCES.md)。
 
 ```
 +-----------------------------------------------+
